@@ -1,0 +1,148 @@
+-- =====================================================
+-- ENCA TRADING POS SYSTEM - COMPLETE DATABASE
+-- =====================================================
+
+DROP DATABASE IF EXISTS encatrading_db;
+CREATE DATABASE encatrading_db;
+USE encatrading_db;
+
+-- =====================================================
+-- TABLE 1: users
+-- =====================================================
+CREATE TABLE users (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    role ENUM('admin', 'staff') DEFAULT 'staff',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLE 2: categories
+-- =====================================================
+CREATE TABLE categories (
+    category_id INT PRIMARY KEY AUTO_INCREMENT,
+    category_name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLE 3: suppliers
+-- =====================================================
+CREATE TABLE suppliers (
+    supplier_id INT PRIMARY KEY AUTO_INCREMENT,
+    supplier_name VARCHAR(100) NOT NULL,
+    contact_person VARCHAR(100),
+    phone VARCHAR(20),
+    email VARCHAR(100),
+    address TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =====================================================
+-- TABLE 4: products
+-- =====================================================
+CREATE TABLE products (
+    product_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_name VARCHAR(200) NOT NULL,
+    category_id INT,
+    supplier_id INT,
+    unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price > 0),
+    stock_quantity INT DEFAULT 0 CHECK (stock_quantity >= 0),
+    reorder_level INT DEFAULT 5 CHECK (reorder_level >= 0),
+    barcode VARCHAR(50) UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE SET NULL,
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE SET NULL
+);
+
+-- =====================================================
+-- TABLE 5: sales
+-- =====================================================
+CREATE TABLE sales (
+    sale_id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
+    tax_amount DECIMAL(10,2) DEFAULT 0,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
+    payment_method ENUM('cash', 'card', 'gcash') DEFAULT 'cash',
+    sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- =====================================================
+-- TABLE 6: sale_items
+-- =====================================================
+CREATE TABLE sale_items (
+    sale_item_id INT PRIMARY KEY AUTO_INCREMENT,
+    sale_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price > 0),
+    subtotal DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+);
+
+-- =====================================================
+-- TABLE 7: inventory_logs
+-- =====================================================
+CREATE TABLE inventory_logs (
+    log_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    change_quantity INT NOT NULL,
+    new_quantity INT NOT NULL,
+    reason ENUM('sale', 'purchase', 'adjustment', 'return') NOT NULL,
+    reference_id INT NULL,
+    created_by INT NOT NULL,
+    log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- =====================================================
+-- SAMPLE DATA
+-- =====================================================
+
+-- Users (passwords: admin123 for admin, staff123 for staff)
+INSERT INTO users (username, password, full_name, role) VALUES
+('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin'),
+('staff1', '$2y$10$1QNqTdxCjV3pEe9wzJY2OeFqX5QjXpM4YvZ8WbR6NtS3LfK7HdAa', 'Maria Santos', 'staff'),
+('staff2', '$2y$10$1QNqTdxCjV3pEe9wzJY2OeFqX5QjXpM4YvZ8WbR6NtS3LfK7HdAa', 'Juan Dela Cruz', 'staff');
+
+-- Categories
+INSERT INTO categories (category_name, description) VALUES
+('Electronics', 'Gadgets and electronic items'),
+('Clothing', 'Apparel and accessories'),
+('Food', 'Packaged food items'),
+('Office Supplies', 'Stationery and office equipment');
+
+-- Suppliers
+INSERT INTO suppliers (supplier_name, contact_person, phone, email, address) VALUES
+('TechDistro Inc.', 'John Smith', '0917-123-4567', 'john@techdistro.com', 'Manila'),
+('FashionHub Co.', 'Maria Santos', '0918-765-4321', 'maria@fashionhub.com', 'Cebu'),
+('FoodMart Supply', 'Pedro Gomez', '0920-555-1234', 'pedro@foodmart.com', 'Quezon City');
+
+-- Products
+INSERT INTO products (product_name, category_id, supplier_id, unit_price, stock_quantity, reorder_level) VALUES
+('Smartphone X', 1, 1, 15000.00, 20, 5),
+('Laptop Pro', 1, 1, 45000.00, 10, 3),
+('T-Shirt', 2, 2, 350.00, 50, 10),
+('Jeans', 2, 2, 1200.00, 30, 8),
+('Canned Goods (pack)', 3, 3, 250.00, 100, 20),
+('Notebook', 4, NULL, 45.00, 200, 15),
+('Pen (box)', 4, NULL, 120.00, 80, 10);
+
+-- Sample sales
+INSERT INTO sales (user_id, total_amount, sale_date) VALUES
+(1, 15350.00, NOW() - INTERVAL 2 DAY),
+(2, 2350.00, NOW() - INTERVAL 1 DAY);
+
+INSERT INTO sale_items (sale_id, product_id, quantity, unit_price) VALUES
+(1, 1, 1, 15000.00),
+(1, 4, 1, 1200.00),
+(2, 3, 2, 350.00),
+(2, 5, 2, 250.00);
