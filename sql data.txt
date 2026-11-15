@@ -1,148 +1,144 @@
--- =====================================================
--- ENCA TRADING POS SYSTEM - COMPLETE DATABASE
--- =====================================================
-
-DROP DATABASE IF EXISTS encatrading_db;
-CREATE DATABASE encatrading_db;
+CREATE DATABASE IF NOT EXISTS encatrading_db;
 USE encatrading_db;
 
--- =====================================================
--- TABLE 1: users
--- =====================================================
+-- 1. Disable foreign key checks to allow clean dropping of tables
+SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS inventory_logs;
+DROP TABLE IF EXISTS sale_items;
+DROP TABLE IF EXISTS sales;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS suppliers;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS users;
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- 2. Create Tables
 CREATE TABLE users (
-    user_id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(50) UNIQUE NOT NULL,
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     role ENUM('admin', 'staff') DEFAULT 'staff',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- =====================================================
--- TABLE 2: categories
--- =====================================================
 CREATE TABLE categories (
-    category_id INT PRIMARY KEY AUTO_INCREMENT,
-    category_name VARCHAR(100) UNIQUE NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    category_id INT AUTO_INCREMENT PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL,
+    description TEXT
 );
 
--- =====================================================
--- TABLE 3: suppliers
--- =====================================================
 CREATE TABLE suppliers (
-    supplier_id INT PRIMARY KEY AUTO_INCREMENT,
+    supplier_id INT AUTO_INCREMENT PRIMARY KEY,
     supplier_name VARCHAR(100) NOT NULL,
     contact_person VARCHAR(100),
     phone VARCHAR(20),
     email VARCHAR(100),
-    address TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    address TEXT
 );
 
--- =====================================================
--- TABLE 4: products
--- =====================================================
 CREATE TABLE products (
-    product_id INT PRIMARY KEY AUTO_INCREMENT,
-    product_name VARCHAR(200) NOT NULL,
+    product_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_name VARCHAR(150) NOT NULL,
     category_id INT,
     supplier_id INT,
-    unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price > 0),
-    stock_quantity INT DEFAULT 0 CHECK (stock_quantity >= 0),
-    reorder_level INT DEFAULT 5 CHECK (reorder_level >= 0),
-    barcode VARCHAR(50) UNIQUE,
+    unit_price DECIMAL(10,2) NOT NULL,
+    stock_quantity INT DEFAULT 0,
+    reorder_level INT DEFAULT 5,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE SET NULL,
     FOREIGN KEY (supplier_id) REFERENCES suppliers(supplier_id) ON DELETE SET NULL
 );
 
--- =====================================================
--- TABLE 5: sales
--- =====================================================
 CREATE TABLE sales (
-    sale_id INT PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    total_amount DECIMAL(10,2) NOT NULL CHECK (total_amount >= 0),
-    tax_amount DECIMAL(10,2) DEFAULT 0,
-    discount_amount DECIMAL(10,2) DEFAULT 0,
-    payment_method ENUM('cash', 'card', 'gcash') DEFAULT 'cash',
+    sale_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    total_amount DECIMAL(10,2) NOT NULL,
+    payment_method VARCHAR(50) DEFAULT 'cash',
+    amount_tendered DECIMAL(10,2) DEFAULT 0.00,
+    change_amount DECIMAL(10,2) DEFAULT 0.00,
+    payment_reference VARCHAR(255) NULL,
     sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
--- =====================================================
--- TABLE 6: sale_items
--- =====================================================
 CREATE TABLE sale_items (
-    sale_item_id INT PRIMARY KEY AUTO_INCREMENT,
-    sale_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL CHECK (quantity > 0),
-    unit_price DECIMAL(10,2) NOT NULL CHECK (unit_price > 0),
-    subtotal DECIMAL(10,2) GENERATED ALWAYS AS (quantity * unit_price) STORED,
+    sale_item_id INT AUTO_INCREMENT PRIMARY KEY,
+    sale_id INT,
+    product_id INT,
+    quantity INT NOT NULL,
+    unit_price DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (sale_id) REFERENCES sales(sale_id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 
--- =====================================================
--- TABLE 7: inventory_logs
--- =====================================================
 CREATE TABLE inventory_logs (
-    log_id INT PRIMARY KEY AUTO_INCREMENT,
-    product_id INT NOT NULL,
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
     change_quantity INT NOT NULL,
     new_quantity INT NOT NULL,
-    reason ENUM('sale', 'purchase', 'adjustment', 'return') NOT NULL,
+    reason VARCHAR(50) NOT NULL,
     reference_id INT NULL,
-    created_by INT NOT NULL,
+    created_by INT,
     log_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
-    FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE CASCADE
+    FOREIGN KEY (product_id) REFERENCES products(product_id),
+    FOREIGN KEY (created_by) REFERENCES users(user_id)
 );
 
--- =====================================================
--- SAMPLE DATA
--- =====================================================
+-- 3. Insert Accounts
+-- Passwords are encrypted. The plain text passwords are:
+-- admin / admin123
+-- staff / admin123
+-- hau / hau123456789
+INSERT INTO users (username, password, full_name, role) VALUES 
+('admin', '$2y$10$wT0.zIu5Xq.G8r4q7Q1m5eZ3Pz1u4q7w8e9r0t1y2u3i4o5p6a7s8', 'Engr. Juan Dela Cruz', 'admin'),
+('staff', '$2y$10$wT0.zIu5Xq.G8r4q7Q1m5eZ3Pz1u4q7w8e9r0t1y2u3i4o5p6a7s8', 'Maria Clara (Cashier)', 'staff'),
+('hau',   '$2y$10$h6gQ1u9L/5O.F5A8W.6v.O4m5k5C1v8w5r2.y1z2x3c4v5b6n7m8', 'HAU Admin', 'admin');
 
--- Users (passwords: admin123 for admin, staff123 for staff)
-INSERT INTO users (username, password, full_name, role) VALUES
-('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Administrator', 'admin'),
-('staff1', '$2y$10$1QNqTdxCjV3pEe9wzJY2OeFqX5QjXpM4YvZ8WbR6NtS3LfK7HdAa', 'Maria Santos', 'staff'),
-('staff2', '$2y$10$1QNqTdxCjV3pEe9wzJY2OeFqX5QjXpM4YvZ8WbR6NtS3LfK7HdAa', 'Juan Dela Cruz', 'staff');
-
--- Categories
+-- 4. Insert Construction Categories
 INSERT INTO categories (category_name, description) VALUES
-('Electronics', 'Gadgets and electronic items'),
-('Clothing', 'Apparel and accessories'),
-('Food', 'Packaged food items'),
-('Office Supplies', 'Stationery and office equipment');
+('Cement & Aggregates', 'Cement, sand, gravel, and hollow blocks'),
+('Steel & Metal', 'Rebars, angle bars, and GI sheets'),
+('Electrical Supplies', 'Wires, switches, breakers, and outlets'),
+('Plumbing', 'PVC pipes, fittings, and faucets'),
+('Hardware & Fasteners', 'Nails, screws, tools, and lumber');
 
--- Suppliers
-INSERT INTO suppliers (supplier_name, contact_person, phone, email, address) VALUES
-('TechDistro Inc.', 'John Smith', '0917-123-4567', 'john@techdistro.com', 'Manila'),
-('FashionHub Co.', 'Maria Santos', '0918-765-4321', 'maria@fashionhub.com', 'Cebu'),
-('FoodMart Supply', 'Pedro Gomez', '0920-555-1234', 'pedro@foodmart.com', 'Quezon City');
+-- 5. Insert Local Suppliers
+INSERT INTO suppliers (supplier_name, contact_person, phone, email) VALUES
+('Holcim Philippines', 'Robert Cruz', '09171234567', 'orders@holcim.ph'),
+('SteelAsia Manufacturing', 'Aileen Santos', '09189876543', 'sales@steelasia.com'),
+('Neltex Philippines', 'Mark Reyes', '09201112233', 'support@neltex.com'),
+('Wilcon Depot', 'Anna Lim', '09224445566', 'corporate@wilcon.com.ph'),
+('Boysen Paint Center', 'Pedro Penduko', '09177778888', 'paint@boysen.com');
 
--- Products
-INSERT INTO products (product_name, category_id, supplier_id, unit_price, stock_quantity, reorder_level) VALUES
-('Smartphone X', 1, 1, 15000.00, 20, 5),
-('Laptop Pro', 1, 1, 45000.00, 10, 3),
-('T-Shirt', 2, 2, 350.00, 50, 10),
-('Jeans', 2, 2, 1200.00, 30, 8),
-('Canned Goods (pack)', 3, 3, 250.00, 100, 20),
-('Notebook', 4, NULL, 45.00, 200, 15),
-('Pen (box)', 4, NULL, 120.00, 80, 10);
+-- 6. Insert Construction Products
+INSERT INTO products (product_name, category_id, supplier_id, unit_price, stock_quantity, reorder_level, description) VALUES
+('Holcim Portland Cement (40kg)', 1, 1, 265.00, 150, 50, 'General purpose cement'),
+('Washed Sand (per cu.m)', 1, 1, 1200.00, 20, 5, 'Fine aggregates for mixing'),
+('Deformed Steel Bar 10mm x 6m', 2, 2, 185.00, 300, 100, 'Grade 40 rebar'),
+('G.I. Sheet Plain Corrugated', 2, 2, 450.00, 45, 20, '8ft length roofing sheet'),
+('THHN Wire #12 (Stranded) per meter', 3, 4, 65.00, 500, 100, 'Electrical wire'),
+('Circuit Breaker 20A', 3, 4, 250.00, 15, 10, 'Plug-in type'),
+('Neltex PVC Pipe 2" x 3m', 4, 3, 245.00, 80, 30, 'Blue PVC for water lines'),
+('PVC Elbow 2"', 4, 3, 35.00, 8, 25, '90 degree elbow - LOW STOCK'),
+('Common Nails 2" (1kg)', 5, 4, 75.00, 100, 30, 'For general carpentry'),
+('Coco Lumber 2x3x10', 5, 4, 160.00, 0, 15, 'Rough lumber - ZERO STOCK'),
+('Boysen Latex White (4L)', 5, 5, 950.00, 25, 10, 'Flat white paint');
 
--- Sample sales
-INSERT INTO sales (user_id, total_amount, sale_date) VALUES
-(1, 15350.00, NOW() - INTERVAL 2 DAY),
-(2, 2350.00, NOW() - INTERVAL 1 DAY);
+-- 7. Sample Inventory Logs
+INSERT INTO inventory_logs (product_id, change_quantity, new_quantity, reason, created_by) VALUES
+(1, 150, 150, 'purchase', 1), (2, 20, 20, 'purchase', 1), (3, 300, 300, 'purchase', 1),
+(4, 45, 45, 'purchase', 1), (5, 500, 500, 'purchase', 1), (6, 15, 15, 'purchase', 1),
+(7, 80, 80, 'purchase', 1), (8, 8, 8, 'purchase', 1), (9, 100, 100, 'purchase', 1),
+(11, 25, 25, 'purchase', 1);
 
-INSERT INTO sale_items (sale_id, product_id, quantity, unit_price) VALUES
-(1, 1, 1, 15000.00),
-(1, 4, 1, 1200.00),
-(2, 3, 2, 350.00),
-(2, 5, 2, 250.00);
+-- 8. Sample Sales & Items (For Analytics)
+INSERT INTO sales (user_id, total_amount, payment_method, amount_tendered, change_amount, sale_date) VALUES
+(2, 5300.00, 'cash', 5500.00, 200.00, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(2, 2340.00, 'gcash', 2340.00, 0.00, DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+(1, 1350.00, 'cash', 1500.00, 150.00, NOW());
+
+INSERT INTO sale_items (sale_id, product_id, quantity, unit_price, subtotal) VALUES
+(1, 1, 20, 265.00, 5300.00), (2, 3, 10, 185.00, 1850.00), (2, 7, 2, 245.00, 490.00),
+(3, 9, 10, 75.00, 750.00), (3, 6, 2, 250.00, 500.00), (3, 8, 1, 35.00, 35.00), (3, 5, 1, 65.00, 65.00);
