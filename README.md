@@ -91,19 +91,6 @@ Use the following sample accounts to test the system:
 <hr>
 <br>
 
-<div align="center">
-    
-## 👥 The Team
-
-**[Your Name Here]** - *Lead Developer* <br>
-**[Teammate Name]** - *UI/UX & Documentation* <br>
-**[Teammate Name]** - *Database & Backend* <br>
-
-**Course:** System Integration <br>
-**Institution:** [Your School/University]
-
-<br>
-
 ---
 *This project is for educational purposes as part of the System Integration coursework.*
 </div>
